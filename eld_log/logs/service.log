@@ -1,0 +1,8 @@
+2025-07-01 17:06:12 INFO  [main] c.mes.eld_log.eldLogApplicationTests - Starting eldLogApplicationTests using Java 16.0.2 on DESKTOP-COH2S3K with PID 16456 (started by Admin in C:\Users\Admin\git\ELD\eld_log)
+2025-07-01 17:06:12 DEBUG [main] c.mes.eld_log.eldLogApplicationTests - Running with Spring Boot v2.5.4, Spring v5.3.9
+2025-07-01 17:06:12 INFO  [main] c.mes.eld_log.eldLogApplicationTests - No active profile set, falling back to default profiles: default
+2025-07-01 17:06:18 INFO  [main] c.mes.eld_log.eldLogApplicationTests - Started eldLogApplicationTests in 6.529 seconds (JVM running for 7.629)
+2025-07-01 17:44:30 INFO  [main] c.mes.eld_log.eldLogApplicationTests - Starting eldLogApplicationTests using Java 16.0.2 on DESKTOP-COH2S3K with PID 17460 (started by Admin in C:\Users\Admin\git\ELD\eld_log)
+2025-07-01 17:44:30 DEBUG [main] c.mes.eld_log.eldLogApplicationTests - Running with Spring Boot v2.5.4, Spring v5.3.9
+2025-07-01 17:44:30 INFO  [main] c.mes.eld_log.eldLogApplicationTests - No active profile set, falling back to default profiles: default
+2025-07-01 17:44:36 INFO  [main] c.mes.eld_log.eldLogApplicationTests - Started eldLogApplicationTests in 6.196 seconds (JVM running for 7.227)

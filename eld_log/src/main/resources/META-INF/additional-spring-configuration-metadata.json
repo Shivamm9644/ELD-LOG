@@ -1,0 +1,32 @@
+{"properties": [
+  {
+    "name": "cust.data.employee.name",
+    "type": "java.lang.String",
+    "description": "A description for 'cust.data.employee.name'"
+  },
+  {
+    "name": "fmcsa",
+    "type": "java.lang.String",
+    "description": "A description for 'fmcsa'"
+  },
+  {
+    "name": "keystorePath",
+    "type": "java.lang.String",
+    "description": "A description for 'keystorePath'"
+  },
+  {
+    "name": "eld.fmcsa.cert.path",
+    "type": "java.lang.String",
+    "description": "A description for 'eld.fmcsa.cert.path'"
+  },
+  {
+    "name": "eld.fmcsa.submit-to",
+    "type": "java.lang.String",
+    "description": "A description for 'eld.fmcsa.submit-to'"
+  },
+  {
+    "name": "eld.tls.truststore1",
+    "type": "java.lang.String",
+    "description": "A description for 'eld.tls.truststore1'"
+  }
+]}
