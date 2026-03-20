@@ -1,20 +1,17 @@
 package com.mes.eld_log.serviceImpl;
 
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.sort;
-
-import java.time.*; 
-
 import static com.mes.eld_log.security.Constants.WEB_URL_BASE_PATH;
 import static com.mes.eld_log.security.Constants.WEB_URL_FILE_UPLOAD;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.sort;
 
 import java.awt.Color;
 //import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -25,43 +22,33 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
@@ -71,44 +58,26 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.util.ByteArrayDataSource;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletResponse;
-import javax.swing.JFrame;
 
-import org.apache.commons.lang3.StringEscapeUtils;
-import org.apache.pdfbox.contentstream.operator.state.Save;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFFont;
-import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.jfree.chart.ChartFactory;
-import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
-import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.block.BlockBorder;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
-import org.jfree.chart.title.TextTitle;
-import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.json.JSONObject;
-import org.modelmapper.internal.bytebuddy.asm.Advice.Exit;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
-import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
@@ -116,18 +85,17 @@ import org.springframework.data.mongodb.core.aggregation.GroupOperation;
 import org.springframework.data.mongodb.core.aggregation.LookupOperation;
 import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
-import org.springframework.data.mongodb.core.aggregation.TypedAggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.CriteriaDefinition;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.itextpdf.text.BaseColor;
 
 //import com.lowagie.text.Chunk;
 //import com.lowagie.text.Document;
@@ -143,24 +111,20 @@ import org.springframework.util.StringUtils;
 //import com.lowagie.text.pdf.PdfWriter;
 
 import com.itextpdf.text.Chunk;
-import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
+import com.itextpdf.text.Font;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.PageSize;
 import com.itextpdf.text.Paragraph;
-import com.itextpdf.text.pdf.PdfWriter;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.PdfEncryptor;
 import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.FontFactory;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.Rectangle;
-
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.PdfWriter;
 import com.mes.eld_log.dtos.AddCertifiedLogDto;
 import com.mes.eld_log.dtos.AddDriveringStatusDto;
 import com.mes.eld_log.dtos.AddDriveringStatusResponseDto;
@@ -178,7 +142,6 @@ import com.mes.eld_log.dtos.DispatchDataViewDto;
 import com.mes.eld_log.dtos.DispatchDetailCRUDDto;
 import com.mes.eld_log.dtos.DispatchDetailViewDto;
 import com.mes.eld_log.dtos.DriverLogWithLoginLogViewDto;
-import com.mes.eld_log.dtos.DriverWorkingStatusViewDto;
 import com.mes.eld_log.dtos.DriveringStatusCRUDDto;
 import com.mes.eld_log.dtos.DriveringStatusLogViewDto;
 import com.mes.eld_log.dtos.DriveringStatusViewDto;
@@ -204,16 +167,13 @@ import com.mes.eld_log.dtos.OtherChargeViewDto;
 import com.mes.eld_log.dtos.ReceiverDataViewDto;
 import com.mes.eld_log.dtos.ShiftLogAddDto;
 import com.mes.eld_log.dtos.ShipperDataViewDto;
-import com.mes.eld_log.dtos.TrailerMasterCRUDDto;
 import com.mes.eld_log.dtos.UserLoginDto;
 import com.mes.eld_log.dtos.ViewDriverLogWithDetailDto;
 import com.mes.eld_log.dtos.ViewDriverWorkingDayStatus;
 import com.mes.eld_log.models.AlertsLog;
-import com.mes.eld_log.models.CargoTypeMaster;
 import com.mes.eld_log.models.CertifiedLog;
 import com.mes.eld_log.models.CityMaster;
 import com.mes.eld_log.models.ClientMaster;
-import com.mes.eld_log.models.CompanyMaster;
 import com.mes.eld_log.models.CountryMaster;
 import com.mes.eld_log.models.CustomerMaster;
 import com.mes.eld_log.models.CycleUsa;
@@ -233,9 +193,7 @@ import com.mes.eld_log.models.EmployeeMaster;
 import com.mes.eld_log.models.ExceptionLog;
 import com.mes.eld_log.models.GeofanceMaster;
 import com.mes.eld_log.models.IFTAReports;
-import com.mes.eld_log.models.IdlingReport;
 import com.mes.eld_log.models.LiveDataLog;
-import com.mes.eld_log.models.Login;
 import com.mes.eld_log.models.LoginLog;
 import com.mes.eld_log.models.MACAddressMaster;
 import com.mes.eld_log.models.MainTerminalMaster;
@@ -246,7 +204,6 @@ import com.mes.eld_log.models.ShipperMaster;
 import com.mes.eld_log.models.ShipperReceiverDetails;
 import com.mes.eld_log.models.SplitLog;
 import com.mes.eld_log.models.StateMaster;
-import com.mes.eld_log.models.TrailerMaster;
 import com.mes.eld_log.models.UserMaster;
 import com.mes.eld_log.models.VehicleMaster;
 import com.mes.eld_log.repo.AlertsLogRepo;
@@ -290,14 +247,11 @@ import com.mes.eld_log.results.Result;
 import com.mes.eld_log.results.ResultWrapper;
 import com.mes.eld_log.service.DispatchService;
 import com.mes.eld_log.util.eldLogUtils;
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.client.AggregateIterable;
-import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoCursor;
 
 @Service(value = "dispatchService")
 public class DispatchServiceImpl implements DispatchService{
+	@Value("${file.upload.dir}")
+	private String fileUploadDir;
 	
 	@Autowired
 	private BCryptPasswordEncoder bcryptEncoder;
@@ -2428,88 +2382,111 @@ public class DispatchServiceImpl implements DispatchService{
 		}
 		return result;	
 	}
-	
-	public ResultWrapper<List<DriveringStatusViewDto>> ViewDriveringStatusForLog(DriveringStatusCRUDDto driveringStatusCRUDDto) {
-		ResultWrapper<List<DriveringStatusViewDto>> result = new ResultWrapper<>();
-		String sDebug="";
-		try {
-			List<DriveringStatusViewDto> driveringStatusViewDto = null;
-			
-			long driverId = driveringStatusCRUDDto.getDriverId();
-			long clientId = driveringStatusCRUDDto.getClientId();
-			String fromDate = driveringStatusCRUDDto.getFromDate();
-			String toDate = driveringStatusCRUDDto.getToDate();
-			
-			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"); 
-			LocalDateTime ldtFromDate = LocalDateTime.parse(fromDate, formatter);
-			long from = ldtFromDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-			
-			LocalDateTime ldtToDate = LocalDateTime.parse(toDate, formatter);
-			long to = ldtToDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-		    
-			String driverName="";
-			String url = WEB_URL_BASE_PATH+"/uploads/certified_signature/";
-			String setImagePath1;
-//			if(driverId>0) {
-				driveringStatusViewDto = lookupDriverStatusDataByClientOperation(from,to,driverId,clientId);
-				sDebug+=" >> "+driveringStatusViewDto.size()+" :: "+from+" : "+to+",";
-				
-				String onDutyTime = "",onDriveTime = "",onSleepTime = "",weeklyTime = "",onBreak = "";
-				
-				for(int i=0;i<driveringStatusViewDto.size();i++) {
-					driveringStatusViewDto.get(i).setFromDate(from);
-					driveringStatusViewDto.get(i).setToDate(to);
-//					System.out.println(driverId);
-					try {
-						EmployeeMaster empInfo = employeeMasterRepo.findByEmployeeId((int)driveringStatusViewDto.get(i).getDriverId());
-//						System.out.println(empInfo);
-						driverName = empInfo.getFirstName()+" "+empInfo.getLastName();
-						driveringStatusViewDto.get(i).setDriverName(driverName);
-						driveringStatusViewDto.get(i).setMobileNo(empInfo.getMobileNo());
-						driveringStatusViewDto.get(i).setEmail(empInfo.getEmail());
-//						driveringStatusViewDto.get(i).setCompanyDriverId(empInfo.getDriverId());
-						driveringStatusViewDto.get(i).setCompanyDriverId(empInfo.getUsername());
-
-						driveringStatusViewDto.get(i).setCdlNo(empInfo.getCdlNo());
-						
-						CountryMaster countryInfo = countryMasterRepo.findByCountryId((int)empInfo.getCdlCountryId());
-						driveringStatusViewDto.get(i).setCountryName(countryInfo.getCountryName());
-						StateMaster stateInfo = stateMasterRepo.findByStateId((int)empInfo.getCdlStateId());
-						driveringStatusViewDto.get(i).setStateName(stateInfo.getStateName());
-						
-						driveringStatusViewDto.get(i).setExempt(empInfo.getExempt());
-						
-						VehicleMaster vehcileInfo = vehicleMasterRepo.findByVehicleId((int) empInfo.getTruckNo());
-						driveringStatusViewDto.get(i).setTruckNo(vehcileInfo.getVehicleNo());
-						driveringStatusViewDto.get(i).setVin(vehcileInfo.getVin());
-						
-						MainTerminalMaster mainTerminal = mainTerminalMasterRepo.findByMainTerminalId((int)empInfo.getMainTerminalId());
-						driveringStatusViewDto.get(i).setMainTerminalName(mainTerminal.getMainTerminalName());
-						
-						if(mainTerminal.getStateId()>0) {
-							stateInfo = stateMasterRepo.findByStateId((int)mainTerminal.getStateId());
-							driveringStatusViewDto.get(i).setTimezoneName(stateInfo.getTimeZone());
-							driveringStatusViewDto.get(i).setTimezoneOffSet(stateInfo.getTimezoneOffSet());
-						}
-						
-						CycleUsa cycleUsa = cycleUsaRepo.findByCycleUsaId((int)empInfo.getCycleUsaId());
-						driveringStatusViewDto.get(i).setCycleUsaName(cycleUsa.getCycleUsaName());
-						
-						if(empInfo.getClientId()>0) {
-							ClientMaster clientInfo = clientMasterRepo.findByClientId((int)empInfo.getClientId());
-							driveringStatusViewDto.get(i).setCompanyName(clientInfo.getClientName());
-							driveringStatusViewDto.get(i).setDotNo(clientInfo.getDotNo());
-						}
-						
-//						String sDate[] = driveringStatusViewDto.get(i).getDateTime().split(" ");
-//						LocalDate lDate = LocalDate.parse(sDate[0]);
-//				    	LocalDateTime ldtStartOfDay = LocalDateTime.of(lDate, LocalTime.MIDNIGHT);
-//						LocalDateTime ldtEndOfDay = LocalDateTime.of(lDate, LocalTime.MAX);
-//						long dFrom = ldtStartOfDay.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-//						long dTo = ldtEndOfDay.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+//	
+//	public ResultWrapper<List<DriveringStatusViewDto>> ViewDriveringStatusForLog(DriveringStatusCRUDDto driveringStatusCRUDDto) {
+//		ResultWrapper<List<DriveringStatusViewDto>> result = new ResultWrapper<>();
+//		String sDebug="";
+//		try {
+//			List<DriveringStatusViewDto> driveringStatusViewDto = null;
+//			
+//			long driverId = driveringStatusCRUDDto.getDriverId();
+//			long clientId = driveringStatusCRUDDto.getClientId();
+//			String fromDate = driveringStatusCRUDDto.getFromDate();
+//			String toDate = driveringStatusCRUDDto.getToDate();
+//			
+//			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"); 
+//			LocalDateTime ldtFromDate = LocalDateTime.parse(fromDate, formatter);
+//			long from = ldtFromDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+//			
+//			LocalDateTime ldtToDate = LocalDateTime.parse(toDate, formatter);
+//			long to = ldtToDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+//		    
+//			String driverName="";
+//			String url = WEB_URL_BASE_PATH+"/uploads/certified_signature/";
+//			String setImagePath1;
+////			if(driverId>0) {
+//				driveringStatusViewDto = lookupDriverStatusDataByClientOperation(from,to,driverId,clientId);
+//				sDebug+=" >> "+driveringStatusViewDto.size()+" :: "+from+" : "+to+",";
+//				
+//				String onDutyTime = "",onDriveTime = "",onSleepTime = "",weeklyTime = "",onBreak = "";
+//				
+//				for(int i=0;i<driveringStatusViewDto.size();i++) {
+//					driveringStatusViewDto.get(i).setFromDate(from);
+//					driveringStatusViewDto.get(i).setToDate(to);
+////					System.out.println(driverId);
+//					try {
+//						EmployeeMaster empInfo = employeeMasterRepo.findByEmployeeId((int)driveringStatusViewDto.get(i).getDriverId());
+////						System.out.println(empInfo);
+//						driverName = empInfo.getFirstName()+" "+empInfo.getLastName();
+//						driveringStatusViewDto.get(i).setDriverName(driverName);
+//						driveringStatusViewDto.get(i).setMobileNo(empInfo.getMobileNo());
+//						driveringStatusViewDto.get(i).setEmail(empInfo.getEmail());
+////						driveringStatusViewDto.get(i).setCompanyDriverId(empInfo.getDriverId());
+//						driveringStatusViewDto.get(i).setCompanyDriverId(empInfo.getUsername());
+//
+//						driveringStatusViewDto.get(i).setCdlNo(empInfo.getCdlNo());
 //						
-//						List<CertifiedLogViewDto> certifiedLogViewDto = lookupCertifiedLogDataOperation(dFrom,dTo,driveringStatusViewDto.get(i).getDriverId());
-//						sDebug+=" << "+certifiedLogViewDto+",";
+//						CountryMaster countryInfo = countryMasterRepo.findByCountryId((int)empInfo.getCdlCountryId());
+//						driveringStatusViewDto.get(i).setCountryName(countryInfo.getCountryName());
+//						StateMaster stateInfo = stateMasterRepo.findByStateId((int)empInfo.getCdlStateId());
+//						driveringStatusViewDto.get(i).setStateName(stateInfo.getStateName());
+//						
+//						driveringStatusViewDto.get(i).setExempt(empInfo.getExempt());
+//						
+//						VehicleMaster vehcileInfo = vehicleMasterRepo.findByVehicleId((int) empInfo.getTruckNo());
+//						driveringStatusViewDto.get(i).setTruckNo(vehcileInfo.getVehicleNo());
+//						driveringStatusViewDto.get(i).setVin(vehcileInfo.getVin());
+//						
+//						MainTerminalMaster mainTerminal = mainTerminalMasterRepo.findByMainTerminalId((int)empInfo.getMainTerminalId());
+//						driveringStatusViewDto.get(i).setMainTerminalName(mainTerminal.getMainTerminalName());
+//						
+//						if(mainTerminal.getStateId()>0) {
+//							stateInfo = stateMasterRepo.findByStateId((int)mainTerminal.getStateId());
+//							driveringStatusViewDto.get(i).setTimezoneName(stateInfo.getTimeZone());
+//							driveringStatusViewDto.get(i).setTimezoneOffSet(stateInfo.getTimezoneOffSet());
+//						}
+//						
+//						CycleUsa cycleUsa = cycleUsaRepo.findByCycleUsaId((int)empInfo.getCycleUsaId());
+//						driveringStatusViewDto.get(i).setCycleUsaName(cycleUsa.getCycleUsaName());
+//						
+//						if(empInfo.getClientId()>0) {
+//							ClientMaster clientInfo = clientMasterRepo.findByClientId((int)empInfo.getClientId());
+//							driveringStatusViewDto.get(i).setCompanyName(clientInfo.getClientName());
+//							driveringStatusViewDto.get(i).setDotNo(clientInfo.getDotNo());
+//						}
+//						
+////						String sDate[] = driveringStatusViewDto.get(i).getDateTime().split(" ");
+////						LocalDate lDate = LocalDate.parse(sDate[0]);
+////				    	LocalDateTime ldtStartOfDay = LocalDateTime.of(lDate, LocalTime.MIDNIGHT);
+////						LocalDateTime ldtEndOfDay = LocalDateTime.of(lDate, LocalTime.MAX);
+////						long dFrom = ldtStartOfDay.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+////						long dTo = ldtEndOfDay.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+////						
+////						List<CertifiedLogViewDto> certifiedLogViewDto = lookupCertifiedLogDataOperation(dFrom,dTo,driveringStatusViewDto.get(i).getDriverId());
+////						sDebug+=" << "+certifiedLogViewDto+",";
+////						for(int c=0;c<certifiedLogViewDto.size();c++) {
+////							if(certifiedLogViewDto.get(c).getCoDriverId()>0) {
+////								empInfo = employeeMasterRepo.findByEmployeeId((int)certifiedLogViewDto.get(c).getCoDriverId());
+//////								driveringStatusViewDto.get(i).setCompanyCoDriverId(empInfo.getDriverId());
+////								driveringStatusViewDto.get(i).setCompanyCoDriverId(empInfo.getUsername());
+////								driverName = empInfo.getFirstName()+" "+empInfo.getLastName();
+////								driveringStatusViewDto.get(i).setCoDriverName(driverName);
+////							}
+////							driveringStatusViewDto.get(i).setTrailers(certifiedLogViewDto.get(c).getTrailers());
+////							driveringStatusViewDto.get(i).setShippingDocs(certifiedLogViewDto.get(c).getShippingDocs());
+////							
+////							setImagePath1 = url.concat(certifiedLogViewDto.get(i).getCertifiedSignature());
+////							driveringStatusViewDto.get(i).setCertifiedSignature(setImagePath1);
+////							
+////						}
+//						
+//						LocalDateTime localDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(driveringStatusViewDto.get(i).getUtcDateTime()), TimeZone.getDefault().toZoneId());
+//				        LocalDateTime fromDate1 = localDateTime.withHour(0).withMinute(0).withSecond(0).withNano(0);
+//				        LocalDateTime toDate1 = localDateTime.withHour(23).withMinute(59).withSecond(59).withNano(999_000_000);
+//				        long fromTimestamp = fromDate1.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+//				        long toTimestamp = toDate1.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+//
+//						List<CertifiedLogViewDto> certifiedLogViewDto = lookupCertifiedLogDataOperation(fromTimestamp,toTimestamp,driverId);
 //						for(int c=0;c<certifiedLogViewDto.size();c++) {
 //							if(certifiedLogViewDto.get(c).getCoDriverId()>0) {
 //								empInfo = employeeMasterRepo.findByEmployeeId((int)certifiedLogViewDto.get(c).getCoDriverId());
@@ -2518,6 +2495,7 @@ public class DispatchServiceImpl implements DispatchService{
 //								driverName = empInfo.getFirstName()+" "+empInfo.getLastName();
 //								driveringStatusViewDto.get(i).setCoDriverName(driverName);
 //							}
+//							
 //							driveringStatusViewDto.get(i).setTrailers(certifiedLogViewDto.get(c).getTrailers());
 //							driveringStatusViewDto.get(i).setShippingDocs(certifiedLogViewDto.get(c).getShippingDocs());
 //							
@@ -2525,111 +2503,306 @@ public class DispatchServiceImpl implements DispatchService{
 //							driveringStatusViewDto.get(i).setCertifiedSignature(setImagePath1);
 //							
 //						}
-						
-						LocalDateTime localDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(driveringStatusViewDto.get(i).getUtcDateTime()), TimeZone.getDefault().toZoneId());
-				        LocalDateTime fromDate1 = localDateTime.withHour(0).withMinute(0).withSecond(0).withNano(0);
-				        LocalDateTime toDate1 = localDateTime.withHour(23).withMinute(59).withSecond(59).withNano(999_000_000);
-				        long fromTimestamp = fromDate1.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-				        long toTimestamp = toDate1.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+//
+//					}catch(Exception ex) {
+//						ex.printStackTrace();
+//					}
+//					
+//					DriverWorkingStatus driverWorkingStatus = driverWorkingStatusRepo.findAndViewDriverWorkingstatusByDriverId(driveringStatusViewDto.get(i).getDriverId());
+//					try {
+//						onDutyTime = driverWorkingStatus.getOnDutyTime();
+//						onDriveTime = driverWorkingStatus.getOnDriveTime();
+//						onSleepTime = driverWorkingStatus.getOnSleepTime();
+//						weeklyTime = driverWorkingStatus.getWeeklyTime();
+//						onBreak = driverWorkingStatus.getOnBreak();
+//						
+//						onDutyTime = onDutyTime.substring(0, onDutyTime.length() - 3);
+//						onDriveTime = onDriveTime.substring(0, onDriveTime.length() - 3);
+//						onSleepTime = onSleepTime.substring(0, onSleepTime.length() - 3);
+//						weeklyTime = weeklyTime.substring(0, weeklyTime.length() - 3);
+//						onBreak = onBreak.substring(0, onBreak.length() - 3);
+//						
+//						driveringStatusViewDto.get(i).setOnDutyTime(onDutyTime);
+//						driveringStatusViewDto.get(i).setOnDriveTime(onDriveTime);
+//						driveringStatusViewDto.get(i).setOnSleepTime(onSleepTime);
+//						driveringStatusViewDto.get(i).setWeeklyTime(weeklyTime);
+//						driveringStatusViewDto.get(i).setOnBreak(onBreak);
+//					}catch(Exception ex) {
+//						ex.printStackTrace();
+//						driveringStatusViewDto.get(i).setOnDutyTime("14:00");
+//						driveringStatusViewDto.get(i).setOnDriveTime("11:00");
+//						driveringStatusViewDto.get(i).setOnSleepTime("10:00");
+//						driveringStatusViewDto.get(i).setWeeklyTime("70:00");
+//						driveringStatusViewDto.get(i).setOnBreak("08:00");
+//					}
+//	        	
+//				}
+//				
+//				result.setResult(driveringStatusViewDto);
+//				result.setStatus(Result.SUCCESS);
+//				result.setMessage("Driver Status Information Send Successfully"+sDebug);
+////			}else {
+////				result.setResult(null);
+////				result.setStatus(Result.FAIL);
+////				result.setMessage("Invalid Request.");
+////			}
+//						
+//		}catch(Exception e) {
+//			result.setStatus(Result.FAIL);
+//			result.setMessage(e.getLocalizedMessage());
+//		}
+//		return result;	
+//	}
+	public ResultWrapper<List<DriveringStatusViewDto>> ViewDriveringStatusForLog(DriveringStatusCRUDDto driveringStatusCRUDDto) {
+	    ResultWrapper<List<DriveringStatusViewDto>> result = new ResultWrapper<>();
+	    String sDebug = "";
 
-						List<CertifiedLogViewDto> certifiedLogViewDto = lookupCertifiedLogDataOperation(fromTimestamp,toTimestamp,driverId);
-						for(int c=0;c<certifiedLogViewDto.size();c++) {
-							if(certifiedLogViewDto.get(c).getCoDriverId()>0) {
-								empInfo = employeeMasterRepo.findByEmployeeId((int)certifiedLogViewDto.get(c).getCoDriverId());
-//								driveringStatusViewDto.get(i).setCompanyCoDriverId(empInfo.getDriverId());
-								driveringStatusViewDto.get(i).setCompanyCoDriverId(empInfo.getUsername());
-								driverName = empInfo.getFirstName()+" "+empInfo.getLastName();
-								driveringStatusViewDto.get(i).setCoDriverName(driverName);
-							}
-							
-							driveringStatusViewDto.get(i).setTrailers(certifiedLogViewDto.get(c).getTrailers());
-							driveringStatusViewDto.get(i).setShippingDocs(certifiedLogViewDto.get(c).getShippingDocs());
-							
-							setImagePath1 = url.concat(certifiedLogViewDto.get(i).getCertifiedSignature());
-							driveringStatusViewDto.get(i).setCertifiedSignature(setImagePath1);
-							
-						}
+	    try {
+	        List<DriveringStatusViewDto> rawList;
 
-					}catch(Exception ex) {
-						ex.printStackTrace();
-					}
-					
-					DriverWorkingStatus driverWorkingStatus = driverWorkingStatusRepo.findAndViewDriverWorkingstatusByDriverId(driveringStatusViewDto.get(i).getDriverId());
-					try {
-						onDutyTime = driverWorkingStatus.getOnDutyTime();
-						onDriveTime = driverWorkingStatus.getOnDriveTime();
-						onSleepTime = driverWorkingStatus.getOnSleepTime();
-						weeklyTime = driverWorkingStatus.getWeeklyTime();
-						onBreak = driverWorkingStatus.getOnBreak();
-						
-						onDutyTime = onDutyTime.substring(0, onDutyTime.length() - 3);
-						onDriveTime = onDriveTime.substring(0, onDriveTime.length() - 3);
-						onSleepTime = onSleepTime.substring(0, onSleepTime.length() - 3);
-						weeklyTime = weeklyTime.substring(0, weeklyTime.length() - 3);
-						onBreak = onBreak.substring(0, onBreak.length() - 3);
-						
-						driveringStatusViewDto.get(i).setOnDutyTime(onDutyTime);
-						driveringStatusViewDto.get(i).setOnDriveTime(onDriveTime);
-						driveringStatusViewDto.get(i).setOnSleepTime(onSleepTime);
-						driveringStatusViewDto.get(i).setWeeklyTime(weeklyTime);
-						driveringStatusViewDto.get(i).setOnBreak(onBreak);
-					}catch(Exception ex) {
-						ex.printStackTrace();
-						driveringStatusViewDto.get(i).setOnDutyTime("14:00");
-						driveringStatusViewDto.get(i).setOnDriveTime("11:00");
-						driveringStatusViewDto.get(i).setOnSleepTime("10:00");
-						driveringStatusViewDto.get(i).setWeeklyTime("70:00");
-						driveringStatusViewDto.get(i).setOnBreak("08:00");
-					}
-	        	
-				}
-				
-				result.setResult(driveringStatusViewDto);
-				result.setStatus(Result.SUCCESS);
-				result.setMessage("Driver Status Information Send Successfully"+sDebug);
-//			}else {
-//				result.setResult(null);
-//				result.setStatus(Result.FAIL);
-//				result.setMessage("Invalid Request.");
-//			}
-						
-		}catch(Exception e) {
-			result.setStatus(Result.FAIL);
-			result.setMessage(e.getLocalizedMessage());
-		}
-		return result;	
+	        long driverId = driveringStatusCRUDDto.getDriverId();
+	        long clientId = driveringStatusCRUDDto.getClientId();
+	        String fromDate = driveringStatusCRUDDto.getFromDate();
+	        String toDate = driveringStatusCRUDDto.getToDate();
+
+	        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+	        LocalDateTime ldtFromDate = LocalDateTime.parse(fromDate, formatter);
+	        long from = ldtFromDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+
+	        LocalDateTime ldtToDate = LocalDateTime.parse(toDate, formatter);
+	        long to = ldtToDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+
+	        String driverName = "";
+	        String url = WEB_URL_BASE_PATH + "/uploads/certified_signature/";
+
+	        rawList = lookupDriverStatusDataByClientOperation(from, to, driverId, clientId);
+	        sDebug += " rawSize=" + (rawList != null ? rawList.size() : 0) + " :: " + from + " : " + to + ",";
+
+	        if (rawList == null || rawList.isEmpty()) {
+	            result.setResult(new ArrayList<>());
+	            result.setStatus(Result.SUCCESS);
+	            result.setMessage("Driver Status Information Send Successfully" + sDebug);
+	            return result;
+	        }
+
+	        List<DriveringStatusViewDto> driveringStatusViewDto = new ArrayList<>();
+	        Set<LocalDate> uniqueDays = new LinkedHashSet<>();
+
+	        for (DriveringStatusViewDto dto : rawList) {
+	            LocalDate logDate = Instant.ofEpochMilli(dto.getUtcDateTime())
+	                    .atZone(ZoneId.systemDefault())
+	                    .toLocalDate();
+
+	            if (!uniqueDays.contains(logDate)) {
+	                if (uniqueDays.size() >= 14) {
+	                    break;
+	                }
+	                uniqueDays.add(logDate);
+	            }
+	            driveringStatusViewDto.add(dto);
+	        }
+
+	        sDebug += " filteredDays=" + uniqueDays.size() + ", filteredLogs=" + driveringStatusViewDto.size() + ",";
+
+	        String onDutyTime = "", onDriveTime = "", onSleepTime = "", weeklyTime = "", onBreak = "";
+
+	        for (int i = 0; i < driveringStatusViewDto.size(); i++) {
+	            DriveringStatusViewDto dto = driveringStatusViewDto.get(i);
+	            dto.setFromDate(from);
+	            dto.setToDate(to);
+
+	            try {
+	                EmployeeMaster empInfo = employeeMasterRepo.findByEmployeeId((int) dto.getDriverId());
+	                if (empInfo != null) {
+	                    driverName = empInfo.getFirstName() + " " + empInfo.getLastName();
+	                    dto.setDriverName(driverName);
+	                    dto.setMobileNo(empInfo.getMobileNo());
+	                    dto.setEmail(empInfo.getEmail());
+	                    dto.setCompanyDriverId(empInfo.getUsername());
+	                    dto.setCdlNo(empInfo.getCdlNo());
+	                    dto.setExempt(empInfo.getExempt());
+
+	                    if (empInfo.getCdlCountryId() > 0) {
+	                        CountryMaster countryInfo = countryMasterRepo.findByCountryId((int) empInfo.getCdlCountryId());
+	                        if (countryInfo != null) {
+	                            dto.setCountryName(countryInfo.getCountryName());
+	                        }
+	                    }
+
+	                    if (empInfo.getCdlStateId() > 0) {
+	                        StateMaster stateInfo = stateMasterRepo.findByStateId((int) empInfo.getCdlStateId());
+	                        if (stateInfo != null) {
+	                            dto.setStateName(stateInfo.getStateName());
+	                        }
+	                    }
+
+	                    if (empInfo.getTruckNo() > 0) {
+	                        VehicleMaster vehicleInfo = vehicleMasterRepo.findByVehicleId((int) empInfo.getTruckNo());
+	                        if (vehicleInfo != null) {
+	                            dto.setTruckNo(vehicleInfo.getVehicleNo());
+	                            dto.setVin(vehicleInfo.getVin());
+	                        }
+	                    }
+
+	                    if (empInfo.getMainTerminalId() > 0) {
+	                        MainTerminalMaster mainTerminal = mainTerminalMasterRepo.findByMainTerminalId((int) empInfo.getMainTerminalId());
+	                        if (mainTerminal != null) {
+	                            dto.setMainTerminalName(mainTerminal.getMainTerminalName());
+
+	                            if (mainTerminal.getStateId() > 0) {
+	                                StateMaster stateInfo = stateMasterRepo.findByStateId((int) mainTerminal.getStateId());
+	                                if (stateInfo != null) {
+	                                    dto.setTimezoneName(stateInfo.getTimeZone());
+	                                    dto.setTimezoneOffSet(stateInfo.getTimezoneOffSet());
+	                                }
+	                            }
+	                        }
+	                    }
+
+	                    if (empInfo.getCycleUsaId() > 0) {
+	                        CycleUsa cycleUsa = cycleUsaRepo.findByCycleUsaId((int) empInfo.getCycleUsaId());
+	                        if (cycleUsa != null) {
+	                            dto.setCycleUsaName(cycleUsa.getCycleUsaName());
+	                        }
+	                    }
+
+	                    if (empInfo.getClientId() > 0) {
+	                        ClientMaster clientInfo = clientMasterRepo.findByClientId((int) empInfo.getClientId());
+	                        if (clientInfo != null) {
+	                            dto.setCompanyName(clientInfo.getClientName());
+	                            dto.setDotNo(clientInfo.getDotNo());
+	                        }
+	                    }
+	                }
+
+	                LocalDateTime localDateTime = LocalDateTime.ofInstant(
+	                        Instant.ofEpochMilli(dto.getUtcDateTime()),
+	                        ZoneId.systemDefault()
+	                );
+	                LocalDateTime fromDate1 = localDateTime.withHour(0).withMinute(0).withSecond(0).withNano(0);
+	                LocalDateTime toDate1 = localDateTime.withHour(23).withMinute(59).withSecond(59).withNano(999_000_000);
+
+	                long fromTimestamp = fromDate1.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+	                long toTimestamp = toDate1.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+
+	                List<CertifiedLogViewDto> certifiedLogViewDto =
+	                        lookupCertifiedLogDataOperation(fromTimestamp, toTimestamp, dto.getDriverId());
+
+	                if (certifiedLogViewDto != null && !certifiedLogViewDto.isEmpty()) {
+	                    CertifiedLogViewDto certLog = certifiedLogViewDto.get(0);
+
+	                    if (certLog.getCoDriverId() > 0) {
+	                        EmployeeMaster coDriverInfo = employeeMasterRepo.findByEmployeeId((int) certLog.getCoDriverId());
+	                        if (coDriverInfo != null) {
+	                            dto.setCompanyCoDriverId(coDriverInfo.getUsername());
+	                            dto.setCoDriverName(coDriverInfo.getFirstName() + " " + coDriverInfo.getLastName());
+	                        }
+	                    }
+
+	                    dto.setTrailers(certLog.getTrailers());
+	                    dto.setShippingDocs(certLog.getShippingDocs());
+
+	                    if (certLog.getCertifiedSignature() != null && !certLog.getCertifiedSignature().trim().isEmpty()) {
+	                        dto.setCertifiedSignature(url.concat(certLog.getCertifiedSignature()));
+	                    } else {
+	                        dto.setCertifiedSignature("");
+	                    }
+	                } else {
+	                    dto.setCertifiedSignature("");
+	                }
+
+	            } catch (Exception ex) {
+	                ex.printStackTrace();
+	            }
+
+	            try {
+	                DriverWorkingStatus driverWorkingStatus =
+	                        driverWorkingStatusRepo.findAndViewDriverWorkingstatusByDriverId(dto.getDriverId());
+
+	                if (driverWorkingStatus != null) {
+	                    onDutyTime = driverWorkingStatus.getOnDutyTime();
+	                    onDriveTime = driverWorkingStatus.getOnDriveTime();
+	                    onSleepTime = driverWorkingStatus.getOnSleepTime();
+	                    weeklyTime = driverWorkingStatus.getWeeklyTime();
+	                    onBreak = driverWorkingStatus.getOnBreak();
+
+	                    if (onDutyTime != null && onDutyTime.length() > 3) {
+	                        onDutyTime = onDutyTime.substring(0, onDutyTime.length() - 3);
+	                    }
+	                    if (onDriveTime != null && onDriveTime.length() > 3) {
+	                        onDriveTime = onDriveTime.substring(0, onDriveTime.length() - 3);
+	                    }
+	                    if (onSleepTime != null && onSleepTime.length() > 3) {
+	                        onSleepTime = onSleepTime.substring(0, onSleepTime.length() - 3);
+	                    }
+	                    if (weeklyTime != null && weeklyTime.length() > 3) {
+	                        weeklyTime = weeklyTime.substring(0, weeklyTime.length() - 3);
+	                    }
+	                    if (onBreak != null && onBreak.length() > 3) {
+	                        onBreak = onBreak.substring(0, onBreak.length() - 3);
+	                    }
+
+	                    dto.setOnDutyTime(onDutyTime);
+	                    dto.setOnDriveTime(onDriveTime);
+	                    dto.setOnSleepTime(onSleepTime);
+	                    dto.setWeeklyTime(weeklyTime);
+	                    dto.setOnBreak(onBreak);
+	                } else {
+	                    dto.setOnDutyTime("14:00");
+	                    dto.setOnDriveTime("11:00");
+	                    dto.setOnSleepTime("10:00");
+	                    dto.setWeeklyTime("70:00");
+	                    dto.setOnBreak("08:00");
+	                }
+	            } catch (Exception ex) {
+	                ex.printStackTrace();
+	                dto.setOnDutyTime("14:00");
+	                dto.setOnDriveTime("11:00");
+	                dto.setOnSleepTime("10:00");
+	                dto.setWeeklyTime("70:00");
+	                dto.setOnBreak("08:00");
+	            }
+	        }
+
+	        result.setResult(driveringStatusViewDto);
+	        result.setStatus(Result.SUCCESS);
+	        result.setMessage("Driver Status Information Send Successfully" + sDebug);
+
+	    } catch (Exception e) {
+	        result.setStatus(Result.FAIL);
+	        result.setMessage(e.getLocalizedMessage());
+	    }
+
+	    return result;
 	}
 	
 	public List<DriveringStatusViewDto> lookupDriverStatusDataByClientOperation(long from, long to, long driverId, long clientId){
-		
-		MatchOperation filter = null;
-		
-		if(driverId>0) {
-			filter = Aggregation.match(
-					Criteria.where("utcDateTime").gte(from).lte(to)
-					.and("driverId").is(driverId)
-					.and("clientId").is(clientId)
-				);
-		}else {
-			filter = Aggregation.match(
-					Criteria.where("utcDateTime").gte(from).lte(to)
-					.and("clientId").is(clientId)
-				);
-		}
-			
-		
-		ProjectionOperation projectStage = Aggregation.project(
-				"driverId","status","lattitude","longitude","dateTime","lDateTime","receivedTimestamp","logType",
-				"appVersion","isVoilation","note","customLocation","engineHour","odometer","vehicleId","shift","days",
-				"osVersion","simCardNo","origin","utcDateTime","statusId","timezone","remainingWeeklyTime","remainingDutyTime",
-				"remainingDriveTime","isReportGenerated").andExclude("_id");
-	   
-	    Aggregation aggregation = Aggregation.newAggregation( filter,projectStage,
-	    		sort(Direction.DESC, "utcDateTime"));
-        List<DriveringStatusViewDto> results = mongoTemplate.aggregate(aggregation, "drivering_status" , DriveringStatusViewDto.class).getMappedResults();
-        return results;
-		
-    }
+
+	    MatchOperation filter = null;
+
+	    if(driverId>0) {
+	        filter = Aggregation.match(
+	                Criteria.where("utcDateTime").gte(from).lte(to)
+	                .and("driverId").is(driverId)
+	                .and("clientId").is(clientId)
+	            );
+	    } else {
+	        filter = Aggregation.match(
+	                Criteria.where("utcDateTime").gte(from).lte(to)
+	                .and("clientId").is(clientId)
+	            );
+	    }
+
+	    ProjectionOperation projectStage = Aggregation.project(
+	            "driverId","status","lattitude","longitude","dateTime","lDateTime","receivedTimestamp","logType",
+	            "appVersion","isVoilation","note","customLocation","engineHour","odometer","vehicleId","shift","days",
+	            "osVersion","simCardNo","origin","utcDateTime","statusId","timezone","remainingWeeklyTime","remainingDutyTime",
+	            "remainingDriveTime","isReportGenerated").andExclude("_id");
+
+	    Aggregation aggregation = Aggregation.newAggregation(filter, projectStage, sort(Direction.DESC, "utcDateTime"));
+	    List<DriveringStatusViewDto> results = mongoTemplate.aggregate(aggregation, "drivering_status", DriveringStatusViewDto.class).getMappedResults();
+	    return results;
+	}
 	
 	@Override
 	public ResultWrapper<EmployeeMasterCRUDDto> ViewDriveringStatusWithLoginDetails(DriveringStatusCRUDDto driveringStatusCRUDDto, String tokenValid) {
@@ -4976,6 +5149,7 @@ public class DispatchServiceImpl implements DispatchService{
 							List<CertifiedLogViewDto> certifiedLogViewDto = lookupCertifiedLogDataOperation(from,to,driverId);
 							if(certifiedLogViewDto.size()>0) {
 								for(int c=0;c<certifiedLogViewDto.size();c++) {
+									
 									sDebug+="8,";
 									if(certifiedLogViewDto.get(c).getCoDriverId()>0) {
 										empInfo = employeeMasterRepo.findByEmployeeId((int)certifiedLogViewDto.get(c).getCoDriverId());
@@ -5000,7 +5174,7 @@ public class DispatchServiceImpl implements DispatchService{
 									driveringStatusViewDto.get(i).setTruckNo(vehcileInfo.getVehicleNo());
 									driveringStatusViewDto.get(i).setVin(vehcileInfo.getVin());
 									
-								}
+								} 
 							}else {
 								driveringStatusViewDto.get(i).setTrailers(new ArrayList());
 								driveringStatusViewDto.get(i).setShippingDocs(new ArrayList());
@@ -5336,7 +5510,11 @@ public class DispatchServiceImpl implements DispatchService{
 	}
 	
 	public ResultWrapper<String> UpdateAndEnableDisableDriverLog(DriveringStatusCRUDDto driveringStatusCRUDDto) {
+		
+//		
 		ResultWrapper<String> result = new ResultWrapper<>();
+	
+		
 		try {
 			Instant instant = Instant.now();
 			
@@ -5345,6 +5523,7 @@ public class DispatchServiceImpl implements DispatchService{
 			int isVisible = driveringStatusCRUDDto.getIsVisible();
 			String email = driveringStatusCRUDDto.getEmail();
 			String driverStatusId = driveringStatusCRUDDto.getDriverStatusId();
+			
 			ObjectId objId = new ObjectId(driverStatusId);
 			int logShift = driveringStatusCRUDDto.getDays();
 			int logDays = driveringStatusCRUDDto.getShift();
@@ -5413,16 +5592,23 @@ public class DispatchServiceImpl implements DispatchService{
 			long lStartOfDay = startOfDay1.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 			
 			boolean isVoilationDeleted=false;
-			if(logStatus.equals("Certified")) {
-				
-			}else if(logStatus.equals("Login")) {
-				
-			}else if(logStatus.equals("Logout")) {
-				
-			}else {
-				long removeCount = driveringStatusRepo.deleteAllDriveringStatusVoilation(driverId,midnightTimestamp,nextLogUtcDateTime,1);
-				removeCount = driveringStatusRepo.deleteAllDriveringStatusVoilation(driverId,lStartOfDay,lNextLogEndOfDay,1);
+			
+//			if(logStatus.equals("Certified")) {
+//				
+//			}else if(logStatus.equals("Login")) {
+//				
+//			}else if(logStatus.equals("Logout")) {
+//				
+//			}else {
+//				long removeCount = driveringStatusRepo.deleteAllDriveringStatusVoilation(driverId,midnightTimestamp,nextLogUtcDateTime,1);
+//				removeCount = driveringStatusRepo.deleteAllDriveringStatusVoilation(driverId,lStartOfDay,lNextLogEndOfDay,1);
+//			}
+			// Only when deleting/hiding log
+			if (isVisible == 0) {
+			    driveringStatusRepo.deleteAllDriveringStatusVoilation(driverId, midnightTimestamp, nextLogUtcDateTime, 1);
+			    driveringStatusRepo.deleteAllDriveringStatusVoilation(driverId, lStartOfDay, lNextLogEndOfDay, 1);
 			}
+			
 		
 	        ZoneId zone = ZoneId.systemDefault();
             LocalDate date1 = Instant.ofEpochMilli(midnightTimestamp).atZone(zone).toLocalDate();
@@ -7982,6 +8168,8 @@ public class DispatchServiceImpl implements DispatchService{
 			String sFromDate = driveringStatusCRUDDto.getFromDate();
 			String sToDate = driveringStatusCRUDDto.getToDate();
 			long clientId = driveringStatusCRUDDto.getClientId();
+			String format = driveringStatusCRUDDto.getFormat();
+
 			
 			Instant instant = Instant.now();
 			
@@ -8000,20 +8188,31 @@ public class DispatchServiceImpl implements DispatchService{
 			String isIdlingReportExist = "false";
 			List<IdlingReportViewDto> idlingReport = lookupIdlingReportOperation(String.valueOf(vehicleId),from,to,clientId);
 			sDebug+="Size : "+idlingReport.size()+",";
+			
+			if (idlingReport == null || idlingReport.size() <= 0) {
+				result.setStatus(Result.FAIL);
+				result.setMessage("No idling report data found for selected date range.");
+				result.setResult("");
+				return result;
+			}
 			for(int i=0;i<idlingReport.size();i++) {
 				idlingReport.get(i).setFromDate(sFromDate);
 				idlingReport.get(i).setToDate(sToDate);
 				
 				if(idlingReport.get(i).getClientId()>0) {
 					ClientMaster clientInfo = clientMasterRepo.findByClientId((int)idlingReport.get(i).getClientId());
-					idlingReport.get(i).setClientName(clientInfo.getClientName());
-				}
+					if (clientInfo != null) {
+						idlingReport.get(i).setClientName(clientInfo.getClientName());
+					}				}
 				
 				if(idlingReport.get(i).getVehicleId()!=null && !idlingReport.get(i).getVehicleId().equals("")) {
 					try {
 						VehicleMaster vehcileInfo = vehicleMasterRepo.findByVehicleId(Integer.parseInt(idlingReport.get(i).getVehicleId()));
-						idlingReport.get(i).setVehicleNo(vehcileInfo.getVehicleNo());
-					}catch(Exception ex) {
+						if (vehcileInfo != null) {
+							idlingReport.get(i).setVehicleNo(vehcileInfo.getVehicleNo());
+						} else {
+							idlingReport.get(i).setVehicleNo("");
+						}					}catch(Exception ex) {
 						ex.printStackTrace();
 						idlingReport.get(i).setVehicleNo("");
 					}
@@ -8021,18 +8220,41 @@ public class DispatchServiceImpl implements DispatchService{
 				
 			}
 			
-			String outputPath = WEB_URL_FILE_UPLOAD+"/uploads/idling_reports/"+sanitizedFrom+"_"+sanitizedTo+"_"+vehicleId+".pdf";
-			generateIdlingReportPdf(idlingReport, outputPath);
-			String sUrl = WEB_URL_BASE_PATH + "/uploads/idling_reports/" +sanitizedFrom+"_"+sanitizedTo+"_"+vehicleId+".pdf";
+//			String outputPath = WEB_URL_FILE_UPLOAD+"/uploads/idling_reports/"+sanitizedFrom+"_"+sanitizedTo+"_"+vehicleId+".pdf";
+//			generateIdlingReportPdf(idlingReport, outputPath);
+//			String sUrl = WEB_URL_BASE_PATH + "/uploads/idling_reports/" +sanitizedFrom+"_"+sanitizedTo+"_"+vehicleId+".pdf";
+//			
+//			result.setToken(isIdlingReportExist);
+//			result.setResult(sUrl);
+			if (format == null || format.trim().isEmpty()) format = "pdf";
+			format = format.toLowerCase();
+
+			String baseFileName = sanitizedFrom + "_" + sanitizedTo + "_" + vehicleId;
+
+			if ("csv".equals(format)) {
+
+			    String outputPath = WEB_URL_FILE_UPLOAD + "/uploads/idling_reports/" + baseFileName + ".csv";
+			    generateIdlingReportCsv(idlingReport, outputPath);
+
+			    String sUrl = WEB_URL_BASE_PATH + "/uploads/idling_reports/" + baseFileName + ".csv";
+			    result.setResult(sUrl);
+
+			} else {
+
+			    String outputPath = WEB_URL_FILE_UPLOAD + "/uploads/idling_reports/" + baseFileName + ".pdf";
+			    generateIdlingReportPdf(idlingReport, outputPath);
+
+			    String sUrl = WEB_URL_BASE_PATH + "/uploads/idling_reports/" + baseFileName + ".pdf";
+			    result.setResult(sUrl);
+			}
 			
-			result.setToken(isIdlingReportExist);
-			result.setResult(sUrl);
 			result.setStatus(Result.SUCCESS);
 			result.setMessage("Idling Report Information Send Successfully"+sDebug);
 				
-		}catch(Exception e) {
+		}catch (Exception e) {
+			e.printStackTrace();
 			result.setStatus(Result.FAIL);
-			result.setMessage(e.getLocalizedMessage()+sDebug);
+			result.setMessage(e.getLocalizedMessage() + sDebug);
 		}
 		return result;	
 	}
@@ -8161,6 +8383,38 @@ public class DispatchServiceImpl implements DispatchService{
 
 	    document.add(table);
 	    document.close();
+	}
+	public void generateIdlingReportCsv(List<IdlingReportViewDto> report, String outputPath) throws Exception {
+
+	    File file = new File(outputPath);
+	    file.getParentFile().mkdirs();
+
+	    try (FileWriter writer = new FileWriter(file)) {
+
+	        writer.append("CLIENT,VEHICLE,START TIME,END TIME,DURATION,LOCATION\n");
+
+	        for (IdlingReportViewDto row : report) {
+
+	            String durationFormatted = convertSecondsToTime(row.getDurationMillis() / 1000);
+
+	            writer.append(csvSafe(row.getClientName())).append(",");
+	            writer.append(csvSafe(row.getVehicleNo())).append(",");
+	            writer.append(csvSafe(row.getStartDateTime())).append(",");
+	            writer.append(csvSafe(row.getEndDateTime())).append(",");
+	            writer.append(csvSafe(durationFormatted)).append(",");
+	            writer.append(csvSafe(row.getStartAddress())).append("\n");
+	        }
+	    }
+	}
+
+	private String csvSafe(String v) {
+	    if (v == null) return "";
+	    // CSV break na ho: comma/newline/quotes handle
+	    String s = v.replace("\"", "\"\"");
+	    if (s.contains(",") || s.contains("\n") || s.contains("\r")) {
+	        return "\"" + s + "\"";
+	    }
+	    return s;
 	}
 
 	
@@ -8319,13 +8573,33 @@ public class DispatchServiceImpl implements DispatchService{
 						
 					}
 					iftaReport.get(i).setCurrentTimestamp(instant.toEpochMilli());
-					iftaReport.get(i).setFileName(sanitizedFrom+"_"+sanitizedTo+"_"+vehicleId+".pdf");
 					
+//	//				iftaReport.get(i).setFileName(sanitizedFrom+"_"+sanitizedTo+"_"+vehicleId+".pdf");
+					String baseFileName = sanitizedFrom + "_" + sanitizedTo + "_" + vehicleId;
+					iftaReport.get(i).setFileName(baseFileName + ".pdf");     // old support
+					iftaReport.get(i).setPdfFileName(baseFileName + ".pdf");
+					iftaReport.get(i).setCsvFileName(baseFileName + ".csv");
+
 				}
 				
 				
-				String outputPath = WEB_URL_FILE_UPLOAD+"/uploads/ifta_reports/"+sanitizedFrom+"_"+sanitizedTo+"_"+vehicleId+".pdf";
-				generateFullStyledPdf(iftaReport, outputPath);
+//	//			String outputPath = WEB_URL_FILE_UPLOAD+"/uploads/ifta_reports/"+sanitizedFrom+"_"+sanitizedTo+"_"+vehicleId+".pdf";
+//				generateFullStyledPdf(iftaReport, outputPath);
+				String baseFileName = sanitizedFrom + "_" + sanitizedTo + "_" + vehicleId;
+				String pdfOutputPath = WEB_URL_FILE_UPLOAD + "/uploads/ifta_reports/" + baseFileName + ".pdf";
+				String csvOutputPath = WEB_URL_FILE_UPLOAD + "/uploads/ifta_reports/" + baseFileName + ".csv";
+
+				generateFullStyledPdf(iftaReport, pdfOutputPath);
+				generateIftaReportCsv(iftaReport, csvOutputPath);
+				File pdfFile = new File(pdfOutputPath);
+				File csvFile = new File(csvOutputPath);
+
+				if (!pdfFile.exists()) {
+				    throw new RuntimeException("PDF file was not generated");
+				}
+				if (!csvFile.exists()) {
+				    throw new RuntimeException("CSV file was not generated");
+				}
 				
 				// save generated ifta reports
 //				if(driveringStatusCRUDDto.getIsGenerated()>0) {
@@ -8366,18 +8640,56 @@ public class DispatchServiceImpl implements DispatchService{
 					result.setMessage("IFTA Report Information Send Successfully"+sDebug);
 					
 			}else {
-				isIftaReportExist="true";
-				
-				result.setToken(isIftaReportExist);
-				result.setResult(iftaReport);
-				result.setStatus(Result.FAIL);
-				result.setMessage("IFTA Report Already Generated.");
+			    isIftaReportExist = "true";
+
+			    List<IftaReportViewDto> existingList = new ArrayList<>();
+			    for (IFTAReports row : iftaData) {
+			        IftaReportViewDto dto = new IftaReportViewDto();
+			        dto.setCarrierName(row.getCarrierName());
+			        dto.setFromDate(row.getFromDate());
+			        dto.setToDate(row.getToDate());
+			        dto.setVehicleNo(row.getVehicleNo());
+			        dto.setVehicleId(row.getVehicleId());
+			        dto.setDriverId(row.getDriverId());
+			        dto.setClientId(row.getClientId());
+			        dto.setStateId(row.getStateId());
+			        dto.setUtcDateTime(row.getUtcDateTime());
+			        dto.setMake(row.getMake());
+			        dto.setVin(row.getVin());
+			        dto.setModel(row.getModel());
+			        dto.setManufacturingYear(row.getManufacturingYear());
+			        dto.setStateName(row.getStateName());
+			        dto.setStateCode(row.getStateCode());
+			        dto.setFirstOdometer(row.getFirstOdometer());
+			        dto.setLastOdometer(row.getLastOdometer());
+			        dto.setTotalOdometer(row.getTotalOdometer());
+			        dto.setLattitude(row.getLattitude());
+			        dto.setLongitude(row.getLongitude());
+			        dto.setGpsKm(row.getGpsKm());
+			        dto.setCurrentTimestamp(row.getCurrentTimestamp());
+			        dto.setFileName(row.getFileName());
+			        dto.setPdfFileName(row.getPdfFileName());
+			        dto.setCsvFileName(row.getCsvFileName());
+
+			        if ((dto.getPdfFileName() == null || dto.getPdfFileName().trim().isEmpty())
+			                && dto.getFileName() != null && dto.getFileName().toLowerCase().endsWith(".pdf")) {
+			            dto.setPdfFileName(dto.getFileName());
+			        }
+
+			        existingList.add(dto);
+			    }
+
+			    result.setToken(isIftaReportExist);
+			    result.setResult(existingList);
+			    result.setStatus(Result.SUCCESS);
+			    result.setMessage("IFTA Report Already Generated.");
 			}
 				
 		}catch(Exception e) {
 			result.setStatus(Result.FAIL);
 			result.setMessage(e.getLocalizedMessage());
 		}
+		
 		return result;	
 	}
 	
@@ -8407,7 +8719,7 @@ public class DispatchServiceImpl implements DispatchService{
 	        List<IftaReportViewDto> iftaReport = null;
 	        List<IFTAReports> iftaData = iftaReportsRepo.findAndViewIftaReport(String.valueOf(vehicleId), sFromDate, sToDate);
 	        String companyName = "";
-	        long clientId=0;
+	        long clientId = 0;
 
 	        if (iftaData.size() <= 0) {
 	            isIftaReportExist = "false";
@@ -8417,62 +8729,56 @@ public class DispatchServiceImpl implements DispatchService{
 //	                    .and("stateId").gt(0)
 //	                    .and("Speed").gt(2));
 //	            query1.with(Sort.by(Sort.Direction.ASC, "utcDateTime"));
-//
+	//
 //	            iftaReport = mongoTemplate.find(query1, IftaReportViewDto.class, "eld_log_data");
-	            
-				iftaReport = lookupIftaReportNewOperation(String.valueOf(vehicleId), from, to);
+
+	            iftaReport = lookupIftaReportNewOperation(String.valueOf(vehicleId), from, to);
 
 	            sDebug += "Size : " + iftaReport.size() + ",";
-//	            SaveLog(sDebug);
-	            // -------------------------
-	            // Process into state segments
-	            // -------------------------
 	            List<IftaReportViewDto> processedList = new ArrayList<>();
 
-	            String prevState = null, prevStateCode=null;
+	            String prevState = null, prevStateCode = null;
 	            double firstOdometer = 0.0;
 	            double lastOdometer = 0.0;
-	            IftaReportViewDto lastData=null;
-	            
-	            double lastLat=0,lastLng=0, TOTAL_KM=0;
-				long timeDiff=0, lastTimeStamp=0;
-				
-//	            SaveLog(sDebug);
+	            IftaReportViewDto lastData = null;
+
+	            double lastLat = 0, lastLng = 0, TOTAL_KM = 0;
+	            long timeDiff = 0, lastTimeStamp = 0;
+
 	            for (int i = 0; i < iftaReport.size(); i++) {
 	                IftaReportViewDto current = iftaReport.get(i);
-	                sDebug+="1,";
-	                // enrich current record (company, vehicle, state)
+	                sDebug += "1,";
+
 	                if (current.getClientId() > 0) {
-	                	clientId = current.getClientId();
+	                    clientId = current.getClientId();
 	                    ClientMaster clientInfo = clientMasterRepo.findByClientId((int) current.getClientId());
 	                    companyName = clientInfo.getClientName();
 	                }
-	                sDebug+="2,";
+	                sDebug += "2,";
 	                current.setCarrierName(companyName);
 	                current.setFromDate(sFromDate);
 	                current.setToDate(sToDate);
 	                current.setVehicleId(String.valueOf(vehicleId));
 	                current.setClientId(clientId);
-	                sDebug+="3,";
-//	                if (current.getVehicleId() != null && !current.getVehicleId().equals("")) {
-	                    try {
-//	                        VehicleMaster vehcileInfo = vehicleMasterRepo.findByVehicleId(Integer.parseInt(current.getVehicleId()));
-	                    	VehicleMaster vehcileInfo = vehicleMasterRepo.findByVehicleId((int) vehicleId);
-	                        current.setVehicleNo(vehcileInfo.getVehicleNo());
-	                        current.setMake(vehcileInfo.getMake());
-	                        current.setVin(vehcileInfo.getVin());
-	                        current.setModel(vehcileInfo.getModel());
-	                        current.setManufacturingYear(vehcileInfo.getManufacturingYear());
-	                    } catch (Exception ex) {
-	                        ex.printStackTrace();
-	                        current.setVehicleNo("");
-	                        current.setMake("");
-	                        current.setVin("");
-	                        current.setModel("");
-	                        current.setManufacturingYear(0);
-	                    }
-//	                }
-                    sDebug+="4,";    
+	                sDebug += "3,";
+
+	                try {
+	                    VehicleMaster vehcileInfo = vehicleMasterRepo.findByVehicleId((int) vehicleId);
+	                    current.setVehicleNo(vehcileInfo.getVehicleNo());
+	                    current.setMake(vehcileInfo.getMake());
+	                    current.setVin(vehcileInfo.getVin());
+	                    current.setModel(vehcileInfo.getModel());
+	                    current.setManufacturingYear(vehcileInfo.getManufacturingYear());
+	                } catch (Exception ex) {
+	                    ex.printStackTrace();
+	                    current.setVehicleNo("");
+	                    current.setMake("");
+	                    current.setVin("");
+	                    current.setModel("");
+	                    current.setManufacturingYear(0);
+	                }
+
+	                sDebug += "4,";
 	                try {
 	                    StateMaster stateInfo = stateMasterRepo.findByStateId((int) current.getStateId());
 	                    current.setStateName(stateInfo.getStateName());
@@ -8482,60 +8788,60 @@ public class DispatchServiceImpl implements DispatchService{
 	                    current.setStateName("");
 	                    current.setStateCode("");
 	                }
-	                sDebug+="5,";
-	                current.setCurrentTimestamp(instant.toEpochMilli());
-	                current.setFileName(sanitizedFrom + "_" + sanitizedTo + "_" + vehicleId + ".pdf");
 
-	                // -------------------------
-	                // Odometer calculation
-	                // -------------------------
+	                sDebug += "5,";
+	                current.setCurrentTimestamp(instant.toEpochMilli());
+
+	                String baseFileName = sanitizedFrom + "_" + sanitizedTo + "_" + vehicleId;
+	                current.setPdfFileName(baseFileName + ".pdf");
+	                current.setCsvFileName(baseFileName + ".csv");
+	                current.setFileName(baseFileName + ".pdf");
+
 	                String currentState = current.getStateName();
 	                String currentStateCode = current.getStateCode();
 	                double currentOdo = Double.parseDouble(current.getOdometer());
-	                sDebug+="6,";
+	                sDebug += "6,";
+
 	                if (prevState == null) {
 	                    prevState = currentState;
 	                    prevStateCode = currentStateCode;
 	                    firstOdometer = currentOdo;
 	                    lastOdometer = currentOdo;
 	                    lastData = current;
-	                    
+
 	                    lastLat = current.getLattitude();
-						lastLng = current.getLongitude();
-						lastTimeStamp = current.getUtcDateTime();
-						
+	                    lastLng = current.getLongitude();
+	                    lastTimeStamp = current.getUtcDateTime();
 	                    continue;
 	                }
-	                sDebug+="7,";
+
+	                sDebug += "7,";
 	                if (lastLat != 0 && lastLat != current.getLattitude()) {
-//	                	SaveLog(" lastLat: "+lastLat+", ");
 	                    double KM = calculateDistanceInMeters(
-	                        current.getLattitude(), current.getLongitude(),
-	                        lastLat, lastLng
+	                            current.getLattitude(), current.getLongitude(),
+	                            lastLat, lastLng
 	                    );
 	                    timeDiff = (current.getUtcDateTime() - lastTimeStamp) / 1000;
-//	                    SaveLog(" Meters: "+KM+" :: Diff -> "+timeDiff+",");
-	                    if ((KM / 1000) <= 5 && timeDiff <= 600) { // filter bad points
+	                    if ((KM / 1000) <= 5 && timeDiff <= 600) {
 	                        TOTAL_KM += KM / 1000;
 	                    }
 	                }
+
 	                lastLat = current.getLattitude();
 	                lastLng = current.getLongitude();
 	                lastTimeStamp = current.getUtcDateTime();
-	                sDebug+="8,";
-//	                SaveLog(prevState+" :: "+currentState+"\n");
+	                sDebug += "8,";
+
 	                if (currentState.equals(prevState)) {
 	                    lastOdometer = currentOdo;
 	                } else {
-//	                	SaveLog("KM : "+TOTAL_KM+"\n");
-	                    // save completed segment
 	                    IftaReportViewDto segment = new IftaReportViewDto();
 	                    segment.setStateId(lastData.getStateId());
 	                    segment.setStateName(prevState);
 	                    segment.setStateCode(prevStateCode);
-	                    segment.setFirstOdometer(Math.round(firstOdometer*0.62137119));
-	                    segment.setLastOdometer(Math.round(lastOdometer*0.62137119));
-	                    segment.setTotalOdometer(Math.round((lastOdometer - firstOdometer)*0.62137119));
+	                    segment.setFirstOdometer(Math.round(firstOdometer * 0.62137119));
+	                    segment.setLastOdometer(Math.round(lastOdometer * 0.62137119));
+	                    segment.setTotalOdometer(Math.round((lastOdometer - firstOdometer) * 0.62137119));
 	                    segment.setGpsKm(Math.round(TOTAL_KM * 0.62137119));
 	                    segment.setVehicleNo(lastData.getVehicleNo());
 	                    segment.setVehicleId(lastData.getVehicleId());
@@ -8552,112 +8858,142 @@ public class DispatchServiceImpl implements DispatchService{
 	                    segment.setUtcDateTime(lastData.getUtcDateTime());
 	                    segment.setLattitude(lastData.getLattitude());
 	                    segment.setLongitude(lastData.getLongitude());
+	                    segment.setPdfFileName(lastData.getPdfFileName());
+	                    segment.setCsvFileName(lastData.getCsvFileName());
 	                    segment.setFileName(lastData.getFileName());
 
 	                    processedList.add(segment);
-	                    sDebug+="9,";
-	                    // start new state segment
+	                    sDebug += "9,";
+
 	                    prevState = currentState;
 	                    prevStateCode = currentStateCode;
 	                    firstOdometer = currentOdo;
 	                    lastOdometer = currentOdo;
 	                    lastData = current;
-	                    TOTAL_KM=0;
+	                    TOTAL_KM = 0;
 	                }
 	            }
-	            sDebug+="10,";
-	            // Add last state segment
+
+	            sDebug += "10,";
 	            if (prevState != null) {
-	            	IftaReportViewDto segment = new IftaReportViewDto();
-	            	segment.setStateId(lastData.getStateId());
-                    segment.setStateName(prevState);
-                    segment.setStateCode(prevStateCode);
-                    segment.setFirstOdometer(Math.round(firstOdometer*0.62137119));
-                    segment.setLastOdometer(Math.round(lastOdometer*0.62137119));
-                    segment.setTotalOdometer(Math.round((lastOdometer - firstOdometer)*0.62137119));
-                    segment.setGpsKm(Math.round(TOTAL_KM * 0.62137119));
-                    segment.setVehicleNo(lastData.getVehicleNo());
-                    segment.setVehicleId(lastData.getVehicleId());
-                    segment.setClientId(lastData.getClientId());
-                    segment.setDriverId(lastData.getDriverId());
-                    segment.setCarrierName(lastData.getCarrierName());
-                    segment.setFromDate(lastData.getFromDate());
-                    segment.setToDate(lastData.getToDate());
-                    segment.setMake(lastData.getMake());
-                    segment.setVin(lastData.getVin());
-                    segment.setModel(lastData.getModel());
-                    segment.setManufacturingYear(lastData.getManufacturingYear());
-                    segment.setCurrentTimestamp(lastData.getCurrentTimestamp());
-                    segment.setUtcDateTime(lastData.getUtcDateTime());
-                    segment.setLattitude(lastData.getLattitude());
-                    segment.setLongitude(lastData.getLongitude());
-                    segment.setFileName(lastData.getFileName());
-                    
+	                IftaReportViewDto segment = new IftaReportViewDto();
+	                segment.setStateId(lastData.getStateId());
+	                segment.setStateName(prevState);
+	                segment.setStateCode(prevStateCode);
+	                segment.setFirstOdometer(Math.round(firstOdometer * 0.62137119));
+	                segment.setLastOdometer(Math.round(lastOdometer * 0.62137119));
+	                segment.setTotalOdometer(Math.round((lastOdometer - firstOdometer) * 0.62137119));
+	                segment.setGpsKm(Math.round(TOTAL_KM * 0.62137119));
+	                segment.setVehicleNo(lastData.getVehicleNo());
+	                segment.setVehicleId(lastData.getVehicleId());
+	                segment.setClientId(lastData.getClientId());
+	                segment.setDriverId(lastData.getDriverId());
+	                segment.setCarrierName(lastData.getCarrierName());
+	                segment.setFromDate(lastData.getFromDate());
+	                segment.setToDate(lastData.getToDate());
+	                segment.setMake(lastData.getMake());
+	                segment.setVin(lastData.getVin());
+	                segment.setModel(lastData.getModel());
+	                segment.setManufacturingYear(lastData.getManufacturingYear());
+	                segment.setCurrentTimestamp(lastData.getCurrentTimestamp());
+	                segment.setUtcDateTime(lastData.getUtcDateTime());
+	                segment.setLattitude(lastData.getLattitude());
+	                segment.setLongitude(lastData.getLongitude());
+	                segment.setPdfFileName(lastData.getPdfFileName());
+	                segment.setCsvFileName(lastData.getCsvFileName());
+	                segment.setFileName(lastData.getFileName());
+
 	                processedList.add(segment);
 	            }
-	            sDebug+="11,";
+
+	            sDebug += "11,";
 	            Map<String, IftaReportViewDto> mergedMap = new LinkedHashMap<>();
 	            for (IftaReportViewDto seg : processedList) {
-	                String key = seg.getStateCode(); // Or seg.getStateName()
+	                String key = seg.getStateCode();
 
 	                if (!mergedMap.containsKey(key)) {
-	                    // clone segment for the first entry
 	                    mergedMap.put(key, seg);
 	                } else {
 	                    IftaReportViewDto existing = mergedMap.get(key);
 
-	                    // Sum totalOdometer and gpsKm
 	                    existing.setTotalOdometer(existing.getTotalOdometer() + seg.getTotalOdometer());
 	                    existing.setGpsKm(existing.getGpsKm() + seg.getGpsKm());
 
-	                    // First odometer = min
 	                    if (seg.getFirstOdometer() < existing.getFirstOdometer()) {
 	                        existing.setFirstOdometer(seg.getFirstOdometer());
 	                    }
 
-	                    // Last odometer = max
 	                    if (seg.getLastOdometer() > existing.getLastOdometer()) {
 	                        existing.setLastOdometer(seg.getLastOdometer());
 	                    }
 	                }
 	            }
-	            sDebug+="12,";
+
+	            sDebug += "12,";
 	            List<IftaReportViewDto> finalList = new ArrayList<>(mergedMap.values());
-	            
-	            String outputPath = WEB_URL_FILE_UPLOAD+"/uploads/ifta_reports/"+sanitizedFrom+"_"+sanitizedTo+"_"+vehicleId+".pdf";
-	            generateFullStyledNewPdf(finalList, outputPath);
-	            sDebug+="13,";
-				IFTAReports iftaReports = new IFTAReports();
-				for(int i=0;i<finalList.size();i++) {
-					iftaReports = new IFTAReports();
-					iftaReports.setCarrierName(finalList.get(i).getCarrierName());
-					iftaReports.setFromDate(sFromDate);
-					iftaReports.setToDate(sToDate);
-					iftaReports.setVehicleNo(finalList.get(i).getVehicleNo());
-					iftaReports.setVehicleId(finalList.get(i).getVehicleId());
-					iftaReports.setDriverId(finalList.get(i).getDriverId());
-					iftaReports.setClientId(finalList.get(i).getClientId());
-					iftaReports.setStateId(finalList.get(i).getStateId());
-					iftaReports.setUtcDateTime(finalList.get(i).getUtcDateTime());
-					iftaReports.setMake(finalList.get(i).getMake());
-					iftaReports.setVin(finalList.get(i).getVin());
-					iftaReports.setModel(finalList.get(i).getModel());
-					iftaReports.setManufacturingYear(finalList.get(i).getManufacturingYear());
-					iftaReports.setStateName(finalList.get(i).getStateName());
-					iftaReports.setStateCode(finalList.get(i).getStateCode());
-					iftaReports.setFirstOdometer(finalList.get(i).getFirstOdometer());
-					iftaReports.setLastOdometer(finalList.get(i).getLastOdometer());
-					iftaReports.setTotalOdometer(finalList.get(i).getTotalOdometer());
-					iftaReports.setLattitude(finalList.get(i).getLattitude());
-					iftaReports.setLongitude(finalList.get(i).getLongitude());
-					iftaReports.setGpsKm(finalList.get(i).getGpsKm());
-					iftaReports.setCurrentTimestamp(finalList.get(i).getCurrentTimestamp());
-					iftaReports.setFileName(sanitizedFrom+"_"+sanitizedTo+"_"+vehicleId+".pdf");
-					
-					iftaReportsRepo.save(iftaReports);
-					
-				}
-				sDebug+="14,";
+
+	            String baseFileName = sanitizedFrom + "_" + sanitizedTo + "_" + vehicleId;
+	            String pdfOutputPath = WEB_URL_FILE_UPLOAD + "/uploads/ifta_reports/" + baseFileName + ".pdf";
+	            String csvOutputPath = WEB_URL_FILE_UPLOAD + "/uploads/ifta_reports/" + baseFileName + ".csv";
+
+	            generateFullStyledNewPdf(finalList, pdfOutputPath);
+	            generateIftaReportCsv(finalList, csvOutputPath);
+
+	            File pdfFile = new File(pdfOutputPath);
+	            File csvFile = new File(csvOutputPath);
+
+	            if (!pdfFile.exists()) {
+	                throw new RuntimeException("PDF file was not generated");
+	            }
+
+	            if (!csvFile.exists()) {
+	                throw new RuntimeException("CSV file was not generated");
+	            }
+
+	            for (int i = 0; i < finalList.size(); i++) {
+	                finalList.get(i).setPdfFileName(baseFileName + ".pdf");
+	                finalList.get(i).setCsvFileName(baseFileName + ".csv");
+	                finalList.get(i).setFileName(baseFileName + ".pdf");
+	            }
+
+	            sDebug += "13,";
+	            IFTAReports iftaReports = new IFTAReports();
+	            for (int i = 0; i < finalList.size(); i++) {
+	                iftaReports = new IFTAReports();
+	                iftaReports.setCarrierName(finalList.get(i).getCarrierName());
+	                iftaReports.setFromDate(sFromDate);
+	                iftaReports.setToDate(sToDate);
+	                iftaReports.setVehicleNo(finalList.get(i).getVehicleNo());
+	                iftaReports.setVehicleId(finalList.get(i).getVehicleId());
+	                iftaReports.setDriverId(finalList.get(i).getDriverId());
+	                iftaReports.setClientId(finalList.get(i).getClientId());
+	                iftaReports.setStateId(finalList.get(i).getStateId());
+	                iftaReports.setUtcDateTime(finalList.get(i).getUtcDateTime());
+	                iftaReports.setMake(finalList.get(i).getMake());
+	                iftaReports.setVin(finalList.get(i).getVin());
+	                iftaReports.setModel(finalList.get(i).getModel());
+	                iftaReports.setManufacturingYear(finalList.get(i).getManufacturingYear());
+	                iftaReports.setStateName(finalList.get(i).getStateName());
+	                iftaReports.setStateCode(finalList.get(i).getStateCode());
+	                iftaReports.setFirstOdometer(finalList.get(i).getFirstOdometer());
+	                iftaReports.setLastOdometer(finalList.get(i).getLastOdometer());
+	                iftaReports.setTotalOdometer(finalList.get(i).getTotalOdometer());
+	                iftaReports.setLattitude(finalList.get(i).getLattitude());
+	                iftaReports.setLongitude(finalList.get(i).getLongitude());
+	                iftaReports.setGpsKm(finalList.get(i).getGpsKm());
+	                iftaReports.setCurrentTimestamp(finalList.get(i).getCurrentTimestamp());
+
+	                // keep old support
+	                iftaReports.setFileName(baseFileName + ".pdf");
+
+	                // new correct fields
+	                iftaReports.setPdfFileName(baseFileName + ".pdf");
+	                iftaReports.setCsvFileName(baseFileName + ".csv");
+
+	                iftaReportsRepo.save(iftaReports);
+	            }
+
+	            sDebug += "14,";
 	            result.setToken(isIftaReportExist);
 	            result.setResult(finalList);
 	            result.setStatus(Result.SUCCESS);
@@ -8666,15 +9002,57 @@ public class DispatchServiceImpl implements DispatchService{
 	        } else {
 	            isIftaReportExist = "true";
 
+	            List<IftaReportViewDto> existingList = new ArrayList<>();
+	            for (IFTAReports row : iftaData) {
+	                IftaReportViewDto dto = new IftaReportViewDto();
+	                dto.setCarrierName(row.getCarrierName());
+	                dto.setFromDate(row.getFromDate());
+	                dto.setToDate(row.getToDate());
+	                dto.setVehicleNo(row.getVehicleNo());
+	                dto.setVehicleId(row.getVehicleId());
+	                dto.setDriverId(row.getDriverId());
+	                dto.setClientId(row.getClientId());
+	                dto.setStateId(row.getStateId());
+	                dto.setUtcDateTime(row.getUtcDateTime());
+	                dto.setMake(row.getMake());
+	                dto.setVin(row.getVin());
+	                dto.setModel(row.getModel());
+	                dto.setManufacturingYear(row.getManufacturingYear());
+	                dto.setStateName(row.getStateName());
+	                dto.setStateCode(row.getStateCode());
+	                dto.setFirstOdometer(row.getFirstOdometer());
+	                dto.setLastOdometer(row.getLastOdometer());
+	                dto.setTotalOdometer(row.getTotalOdometer());
+	                dto.setLattitude(row.getLattitude());
+	                dto.setLongitude(row.getLongitude());
+	                dto.setGpsKm(row.getGpsKm());
+	                dto.setCurrentTimestamp(row.getCurrentTimestamp());
+	                dto.setFileName(row.getFileName());
+	                dto.setPdfFileName(row.getPdfFileName());
+	                dto.setCsvFileName(row.getCsvFileName());
+
+	                if ((dto.getPdfFileName() == null || dto.getPdfFileName().trim().isEmpty())
+	                        && dto.getFileName() != null && dto.getFileName().toLowerCase().endsWith(".pdf")) {
+	                    dto.setPdfFileName(dto.getFileName());
+	                }
+
+	                if ((dto.getCsvFileName() == null || dto.getCsvFileName().trim().isEmpty())
+	                        && dto.getFileName() != null && dto.getFileName().toLowerCase().endsWith(".csv")) {
+	                    dto.setCsvFileName(dto.getFileName());
+	                }
+
+	                existingList.add(dto);
+	            }
+
 	            result.setToken(isIftaReportExist);
-	            result.setResult(null);
-	            result.setStatus(Result.FAIL);
-	            result.setMessage("IFTA Report Already Generated."+sDebug);
+	            result.setResult(existingList);
+	            result.setStatus(Result.SUCCESS);
+	            result.setMessage("IFTA Report Already Generated." + sDebug);
 	        }
 
 	    } catch (Exception e) {
 	        result.setStatus(Result.FAIL);
-	        result.setMessage(e.getLocalizedMessage()+sDebug);
+	        result.setMessage(e.getLocalizedMessage() + sDebug);
 	    }
 	    return result;
 	}
@@ -8789,6 +9167,42 @@ public class DispatchServiceImpl implements DispatchService{
 
 	    document.add(dataTable);
 	    document.close();
+	}
+	public void generateIftaReportCsv(List<IftaReportViewDto> report, String outputPath) throws Exception {
+	    File file = new File(outputPath);
+	    file.getParentFile().mkdirs();
+
+	    try (FileWriter writer = new FileWriter(file)) {
+	        writer.append("Carrier,Period From,Period To,Vehicle No,Make,VIN,Model,Year,State Name,State Code,First Odometer (Miles),Last Odometer (Miles),Total Odometer (Miles),GPS (Miles)");
+	        writer.append("\n");
+
+	        for (IftaReportViewDto row : report) {
+	            writer.append(csvValue(row.getCarrierName())).append(",");
+	            writer.append(csvValue(row.getFromDate())).append(",");
+	            writer.append(csvValue(row.getToDate())).append(",");
+	            writer.append(csvValue(row.getVehicleNo())).append(",");
+	            writer.append(csvValue(row.getMake())).append(",");
+	            writer.append(csvValue(row.getVin())).append(",");
+	            writer.append(csvValue(row.getModel())).append(",");
+	            writer.append(String.valueOf(row.getManufacturingYear())).append(",");
+	            writer.append(csvValue(row.getStateName())).append(",");
+	            writer.append(csvValue(row.getStateCode())).append(",");
+	            writer.append(String.valueOf(row.getFirstOdometer())).append(",");
+	            writer.append(String.valueOf(row.getLastOdometer())).append(",");
+	            writer.append(String.valueOf(row.getTotalOdometer())).append(",");
+	            writer.append(String.valueOf(row.getGpsKm()));
+	            writer.append("\n");
+	        }
+
+	        writer.flush();
+	    }
+	}
+
+	private String csvValue(String value) {
+	    if (value == null) {
+	        return "\"\"";
+	    }
+	    return "\"" + value.replace("\"", "\"\"") + "\"";
 	}
 	
 	public void generateFullStyledNewPdf(List<IftaReportViewDto> report, String outputPath) throws Exception {
@@ -9017,32 +9431,35 @@ public class DispatchServiceImpl implements DispatchService{
 		return result;	
 	}
 	
-	public List<IftaReportViewDto> lookupIftaGeneratedReportOperation(long clientId){
-		
-		MatchOperation filter = Aggregation.match(
-				Criteria.where("clientId").is(clientId));
-		
-		GroupOperation group1 = Aggregation.group("currentTimestamp","vehicleNo")
-				.count().as("totalCount")
-                .first("fromDate").as("fromDate")
-                .last("toDate").as("toDate")
-                .last("vehicleId").as("vehicleId")
-                .last("driverId").as("driverId")
-                .first("make").as("make")
-                .first("vin").as("vin")
-                .first("currentTimestamp").as("currentTimestamp")
-                .first("fileName").as("fileName")
-                .last("vehicleNo").as("vehicleNo");
-		
-		ProjectionOperation projectStage = Aggregation.project(
-				"fromDate","toDate","vehicleId","driverId","make","vin","currentTimestamp","vehicleNo","fileName").andExclude("_id");
-	   
-	    Aggregation aggregation = Aggregation.newAggregation(filter,projectStage,group1,
-	    		sort(Direction.DESC, "currentTimestamp"));
-        List<IftaReportViewDto> results = mongoTemplate.aggregate(aggregation, "ifta_reports" , IftaReportViewDto.class).getMappedResults();
-        return results;
-		
-    }
+	public List<IftaReportViewDto> lookupIftaGeneratedReportOperation(long clientId) {
+
+	    MatchOperation filter = Aggregation.match(
+	            Criteria.where("clientId").is(clientId));
+
+	    GroupOperation group1 = Aggregation.group("currentTimestamp", "vehicleNo")
+	            .count().as("totalCount")
+	            .first("fromDate").as("fromDate")
+	            .last("toDate").as("toDate")
+	            .last("vehicleId").as("vehicleId")
+	            .last("driverId").as("driverId")
+	            .first("make").as("make")
+	            .first("vin").as("vin")
+	            .first("currentTimestamp").as("currentTimestamp")
+	            .first("fileName").as("fileName")
+	            .first("pdfFileName").as("pdfFileName")
+	            .first("csvFileName").as("csvFileName")
+	            .last("vehicleNo").as("vehicleNo");
+
+	    ProjectionOperation projectStage = Aggregation.project(
+	            "fromDate", "toDate", "vehicleId", "driverId", "make", "vin",
+	            "currentTimestamp", "vehicleNo", "fileName", "pdfFileName", "csvFileName"
+	    ).andExclude("_id");
+
+	    Aggregation aggregation = Aggregation.newAggregation(
+	            filter, projectStage, group1, sort(Direction.DESC, "currentTimestamp"));
+
+	    return mongoTemplate.aggregate(aggregation, "ifta_reports", IftaReportViewDto.class).getMappedResults();
+	}
 	
 	public ResultWrapper<List<IftaSummaryReport>> ViewIftaSummaryReport(DriveringStatusCRUDDto driveringStatusCRUDDto) {
 		ResultWrapper<List<IftaSummaryReport>> result = new ResultWrapper<>();
@@ -11501,6 +11918,8 @@ public class DispatchServiceImpl implements DispatchService{
 	        update.set("trailers", certifiedLogCRUDDto.getTrailers());
 	        update.set("shippingDocs", certifiedLogCRUDDto.getShippingDocs());
 	        update.set("coDriverId", certifiedLogCRUDDto.getCoDriverId());
+	        
+//	        update.set("CertifiedSignature",certifiedLogCRUDDto.getCertifiedSignature());
 	        mongoTemplate.findAndModify(query, update, CertifiedLog.class);
 	      
 			result.setResult("Updated");
@@ -11512,6 +11931,7 @@ public class DispatchServiceImpl implements DispatchService{
 		}
 		return result;	
 	}
+	
 	
 	public ResultWrapper<String> ExportChartGraph(CertifiedLogCRUDDto certifiedLogCRUDDto) {
 		ResultWrapper<String> result = new ResultWrapper<>();
@@ -11948,5 +12368,60 @@ public class DispatchServiceImpl implements DispatchService{
         return results;
 		
     }
-	
+	public ResultWrapper<String> DeleteSelectedDriverLogs(DVIRDataCRUDDto dvirDataCRUDDto) {
+
+	    ResultWrapper<String> result = new ResultWrapper<>();
+
+	    try {
+
+	        List<String> driverStatusIds = dvirDataCRUDDto.getDriverStatusIds();
+	        String email = dvirDataCRUDDto.getEmail();
+
+	        Instant instant = Instant.now();
+
+	        if (driverStatusIds == null || driverStatusIds.size() == 0) {
+	            result.setStatus(Result.FAIL);
+	            result.setMessage("No logs selected.");
+	            result.setResult(null);
+	            return result;
+	        }
+
+	        for (String id : driverStatusIds) {
+
+	            if (!ObjectId.isValid(id)) {
+	                continue;
+	            }
+
+	            ObjectId objId = new ObjectId(id);
+
+	            Query query = new Query();
+	            query.addCriteria(
+	                    Criteria.where("_id").is(objId)
+	            );
+
+	            Update update = new Update();
+	            update.set("isVisible", 0);
+	            update.set("email", email);
+	            update.set("updatedTimestamp", instant.toEpochMilli());
+
+	            mongoTemplate.updateFirst(query, update, DriveringStatus.class);
+	        }
+
+	        result.setStatus(Result.SUCCESS);
+	        result.setMessage("Selected logs deleted successfully");
+	        result.setResult("SUCCESS");
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        result.setStatus(Result.FAIL);
+	        result.setMessage(e.getLocalizedMessage());
+	        result.setResult(null);
+	    }
+
+	    return result;
+	}
 }
+
+
+
+	
