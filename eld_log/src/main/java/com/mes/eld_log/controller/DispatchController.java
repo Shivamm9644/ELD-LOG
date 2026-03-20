@@ -1,38 +1,30 @@
 package com.mes.eld_log.controller;
 
-import java.io.Console;
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.security.sasl.AuthenticationException;
 import javax.validation.Valid;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mes.eld_log.dtos.AddCertifiedLogDto;
 import com.mes.eld_log.dtos.AddDriveringStatusDto;
 import com.mes.eld_log.dtos.AddDriveringStatusResponseDto;
@@ -47,7 +39,6 @@ import com.mes.eld_log.dtos.DVIRDataCRUDDto;
 import com.mes.eld_log.dtos.DispatchDetailCRUDDto;
 import com.mes.eld_log.dtos.DispatchDetailViewDto;
 import com.mes.eld_log.dtos.DriverLogWithLoginLogViewDto;
-import com.mes.eld_log.dtos.DriverWorkingStatusViewDto;
 import com.mes.eld_log.dtos.DriveringStatusCRUDDto;
 import com.mes.eld_log.dtos.DriveringStatusLogViewDto;
 import com.mes.eld_log.dtos.DriveringStatusViewDto;
@@ -66,15 +57,12 @@ import com.mes.eld_log.dtos.ViewDriverWorkingDayStatus;
 import com.mes.eld_log.models.CertifiedLog;
 import com.mes.eld_log.models.DVIRData;
 import com.mes.eld_log.models.DefectDetails;
-import com.mes.eld_log.models.DispatchDetails;
 import com.mes.eld_log.models.DriverWorkingStatus;
 import com.mes.eld_log.models.DriveringStatus;
 import com.mes.eld_log.models.ELDOta;
 import com.mes.eld_log.models.ELDOtaStatus;
 import com.mes.eld_log.models.ELDSupport;
-import com.mes.eld_log.models.EmployeeMaster;
 import com.mes.eld_log.models.ExceptionLog;
-import com.mes.eld_log.models.IFTAReports;
 import com.mes.eld_log.results.ResultWrapper;
 import com.mes.eld_log.service.DispatchService;
 import com.mes.eld_log.util.eldLogUtils;
@@ -724,14 +712,16 @@ public class DispatchController{
 		result = dispatchService.UpdateCertifiedLog(certifiedLog,tokenValid);
 		return new ResponseEntity<ResultWrapper<String>>(result, HttpStatus.OK);
 	}
-	
+//	
 	@PostMapping(value="/update_certified_log_with_co_driver")
-	public ResponseEntity<ResultWrapper<String>> UpdateCertifiedLogWithCoDriver(@Valid @RequestBody CertifiedLogCRUDDto certifiedLogCRUDDto)
-		throws UnsupportedEncodingException , JsonProcessingException {
+	public ResponseEntity<ResultWrapper<String>> UpdateCertifiedLogWithCoDriver(@Valid @RequestBody CertifiedLogCRUDDto certifiedLogCRUDDto
+	      )throws UnsupportedEncodingException , JsonProcessingException {
 		ResultWrapper<String> result = null;	
 		result = dispatchService.UpdateCertifiedLogWithCoDriver(certifiedLogCRUDDto);
 		return new ResponseEntity<ResultWrapper<String>>(result, HttpStatus.OK);
 	}
+	
+	
 	
 	@PostMapping(value="/export_chart_graph")
 	public ResponseEntity<ResultWrapper<String>> ExportChartGraph(@Valid @RequestBody CertifiedLogCRUDDto certifiedLogCRUDDto)
@@ -803,6 +793,14 @@ public class DispatchController{
 		}
 		result = dispatchService.ViewELDSupportByDate(eldSupportViewDto,tokenValid);
 		return new ResponseEntity<ResultWrapper<List<ELDSupportViewDto>>>(result, HttpStatus.OK);
+	}
+	@PostMapping(value="/delete_selected_driver_logs")
+	public ResponseEntity<ResultWrapper<String>> DeleteSelectedDriverLogs(
+	        @Valid @RequestBody DVIRDataCRUDDto dvirDataCRUDDto)
+	        throws UnsupportedEncodingException, JsonProcessingException {
+
+	    ResultWrapper<String> result = dispatchService.DeleteSelectedDriverLogs(dvirDataCRUDDto);
+	    return new ResponseEntity<ResultWrapper<String>>(result, HttpStatus.OK);
 	}
 	
 	
